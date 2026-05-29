@@ -1,0 +1,16 @@
+{
+  "name": "arya-portfolio",
+  "version": "1.0.0",
+  "description": "Arya Chib - Full Stack Portfolio",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "nodemailer": "^6.9.7",
+    "dotenv": "^16.3.1",
+    "express-rate-limit": "^7.1.5"
+  }
+}
