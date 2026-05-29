@@ -7,29 +7,25 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Middleware ──────────────────────────────────────────────
+app.set('trust proxy', 1);
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Rate limit: max 5 contact submissions per 15 mins per IP
 const contactLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { error: 'Too many messages sent. Please try again later.' },
 });
 
-// ── Resend client ───────────────────────────────────────────
 const resend = new Resend(process.env.RESEND_API_KEY);
 const TO_EMAIL = process.env.EMAIL_RECIPIENT || 'aryachib19@gmail.com';
 
-// In-memory message store
 const messages = [];
 
-// ── API: Contact Form ───────────────────────────────────────
 app.post('/api/contact', contactLimiter, async (req, res) => {
   const { name, email, subject, message } = req.body;
 
-  // Validation
   if (!name || !email || !message) {
     return res.status(400).json({ error: 'Name, email, and message are required.' });
   }
@@ -40,7 +36,6 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Message is too long (max 2000 characters).' });
   }
 
-  // Store message
   const entry = {
     id: Date.now(),
     name: name.trim(),
@@ -51,10 +46,8 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
   };
   messages.push(entry);
 
-  // Send emails via Resend
   if (process.env.RESEND_API_KEY) {
     try {
-      // Notification → Arya
       await resend.emails.send({
         from: 'Portfolio Contact <onboarding@resend.dev>',
         to: TO_EMAIL,
@@ -77,7 +70,6 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
         `,
       });
 
-      // Auto-reply → sender
       await resend.emails.send({
         from: 'Arya Chib <onboarding@resend.dev>',
         to: entry.email,
@@ -104,17 +96,14 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
   res.json({ success: true, message: 'Message received!' });
 });
 
-// ── API: Health check ───────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
 });
 
-// ── Serve frontend for all other routes ────────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ── Start ───────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀  Arya's portfolio running at http://localhost:${PORT}`);
   console.log(`📧  Resend configured: ${process.env.RESEND_API_KEY ? 'YES ✓' : 'NO — set RESEND_API_KEY in .env'}\n`);
